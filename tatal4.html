@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buying List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            margin: 0;
+        }
+        .sidebar {
+            width: 30%;
+            padding: 20px;
+            background: #f5f1f1;
+            height: 90vh;
+            overflow-y: auto;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 2px solid #f3e8e8;}
+           
+        
+        .main-content {
+            margin-left: 32%;
+            padding: 20px;
+            width: 68%;
+        }
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 32%;
+            width: 68%;
+            background: white;
+            padding: 10px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+        }
+        .content { margin-top: 120px; }
+        .list-container { max-height: 100vh; overflow-y: auto; }
+        
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Stored Sellers</h2>
+        <div id="storeList"></div>
+        <h3>Total Quantity per Item:</h3>
+        <div id="itemTotals"></div>
+    </div>
+    <div class="main-content">
+        <div class="fixed-header">
+            <h2>Buying List</h2>
+            <input type="text" id="sellerName" placeholder="Seller Name">
+            <select id="itemName" onchange="updatePrice()">
+                <option value="">Select Item</option>
+                <option value="Plastic" data-price="30">Plastic</option> 
+                <option value="Plastic 32" data-price="32">Plastic 32</option>
+                <option value="Carton" data-price="10">Carton</option>
+                <option value="LD" data-price="10">LD</option>
+                <option value="Bones" data-price="10">Bones</option>
+                <option value="heavy" data-price="45">heavy</option>
+                <option value="sole" data-price="10">sole</option>
+                <option value="titi" data-price="5">titi</option>
+                <option value="white" data-price="20">white</option>
+                <option value="hard" data-price="100">hard</option>
+                <option value="quencher" data-price="20">quencher</option>
+                <option value="lite" data-price="30">lite</option>
+                <option value="soft" data-price="150">soft</option>
+                <option value="kenus" data-price="700">kinus</option>
+                <option value="prof" data-price="400">prof</option>
+                <option value="mb" data-price="20">mb</option>
+                <option value="pvc" data-price="25">pvc</option>
+                <option value="chupa" data-price="1">chupa</option>
+                <option value="vunjika" data-price="2">vunjika</option>
+                <option value="clear" data-price="15">clear</option>
+                <option value="Bones" data-price="10">Bones</option>
+           
+                <option value="battery" data-price="50">Battery</option>
+
+            </select>
+            <input type="number" id="itemQuantity" placeholder="Quantity" min="0.01" step="0.01">
+            <input type="number" id="itemPrice" placeholder="Price per item" min="0.01" step="0.01">
+            <button onclick="addItem()">Add Item</button>
+            <button onclick="confirmDeleteAllLists()">Delete All</button>
+        </div>
+        <div class="content">
+            <div class="list-container">
+                <div id="list"></div>
+            </div>
+            <h3>Total Spent: <span id="totalSpent">0</span></h3>
+        </div>
+    </div>
+
+    <script>
+        let storedLists = JSON.parse(localStorage.getItem('storedLists')) || [];
+
+        function updatePrice() {
+            let itemSelect = document.getElementById('itemName');
+            let price = itemSelect.options[itemSelect.selectedIndex].getAttribute('data-price');
+            document.getElementById('itemPrice').value = price || '';
+        }
+
+        function addItem() {
+            let seller = document.getElementById('sellerName').value;
+            let name = document.getElementById('itemName').value;
+            let quantity = parseFloat(document.getElementById('itemQuantity').value);
+            let price = parseFloat(document.getElementById('itemPrice').value);
+
+            if (!seller || !name || quantity <= 0 || price < 0) return;
+
+            let sellerData = storedLists.find(s => s.seller === seller);
+            if (!sellerData) {
+                sellerData = { seller, items: [], total: 0 };
+                storedLists.push(sellerData);
+            }
+
+            sellerData.items.push({ name, quantity, price });
+            updateSellerTotal(sellerData);
+            localStorage.setItem('storedLists', JSON.stringify(storedLists));
+            renderStoreList();
+        }
+
+        function updateSellerTotal(sellerData) {
+            sellerData.total = sellerData.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+        }
+
+        function editItem(sellerIndex, itemIndex, input, field) {
+            let value = parseFloat(input.value);
+            if (value < 0 || isNaN(value)) return;
+
+            let storeDiv = document.getElementById('storeList');
+            let scrollPosition = storeDiv.scrollTop;
+
+            storedLists[sellerIndex].items[itemIndex][field] = value;
+            updateSellerTotal(storedLists[sellerIndex]);
+            localStorage.setItem('storedLists', JSON.stringify(storedLists));
+
+            renderStoreList();
+            storeDiv.scrollTop = scrollPosition;
+        }
+
+        function confirmRemoveStoredItem(sellerIndex, itemIndex) {
+            if (confirm("Are you sure you want to delete this item?")) {
+                storedLists[sellerIndex].items.splice(itemIndex, 1);
+                updateSellerTotal(storedLists[sellerIndex]);
+                localStorage.setItem('storedLists', JSON.stringify(storedLists));
+                renderStoreList();
+            }
+        }
+
+        function confirmRemoveStoredSeller(index) {
+            if (confirm("Are you sure you want to delete this seller?")) {
+                storedLists.splice(index, 1);
+                localStorage.setItem('storedLists', JSON.stringify(storedLists));
+                renderStoreList();
+            }
+        }
+
+        function confirmDeleteAllLists() {
+            if (confirm("Are you sure you want to delete everything?")) {
+                localStorage.clear();
+                storedLists = [];
+                renderStoreList();
+            }
+        }
+
+        function renderStoreList() {
+            let storeDiv = document.getElementById('storeList');
+            let scrollPosition = storeDiv.scrollTop;
+
+            storeDiv.innerHTML = '';
+            let totalSpent = 0;
+            let itemTotals = {};
+
+            storedLists.forEach((sellerData, sellerIndex) => {
+                let itemList = sellerData.items.map((item, itemIndex) => {
+                    if (!itemTotals[item.name]) {
+                        itemTotals[item.name] = { quantity: 0, total: 0 };
+                    }
+                    itemTotals[item.name].quantity += item.quantity;
+                    itemTotals[item.name].total += item.quantity * item.price;
+
+                    return `<div>
+                        ${item.name} - 
+                        <input type="number" value="${item.quantity}" min="0.01" step="0.01"
+                            onblur="editItem(${sellerIndex}, ${itemIndex}, this, 'quantity')"> x 
+                        <input type="number" value="${item.price}" min="0.01" step="0.01"
+                            onblur="editItem(${sellerIndex}, ${itemIndex}, this, 'price')"> = 
+                        ${(item.quantity * item.price).toFixed(2)}
+                        <button onclick="confirmRemoveStoredItem(${sellerIndex}, ${itemIndex})">Delete</button>
+                    </div>`;
+                }).join('');
+
+                storeDiv.innerHTML += `<div>
+                    <strong>${sellerData.seller}</strong>: Total = <span>${sellerData.total.toFixed(2)}</span>
+                    <div>${itemList}</div>
+                    <button onclick="confirmRemoveStoredSeller(${sellerIndex})">Delete Seller</button>
+                </div>`;
+
+                totalSpent += sellerData.total;
+            });
+
+            document.getElementById('totalSpent').textContent = totalSpent.toFixed(2);
+
+            let itemTotalsDiv = document.getElementById('itemTotals');
+            itemTotalsDiv.innerHTML = Object.keys(itemTotals).map(item => 
+                `<p>${item}: ${itemTotals[item].quantity.toFixed(2)} units = ${itemTotals[item].total.toFixed(2)}</p>`
+            ).join('');
+
+            storeDiv.scrollTop = scrollPosition;
+        }
+
+        window.onload = () => renderStoreList();
+    </script>
+</body>
+</html>
